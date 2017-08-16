@@ -3,14 +3,22 @@ require 'colorize'
 require 'date'
 require 'pdf-reader'
 
+
 class Client
-	attr_accessor :firstName, :lastName, :folderLoc
+	attr_accessor :firstName, :lastName, :email, :phone, :altPhone, :altName, :address,:folderLoc
+	def print
+		printf("%-20.20s, %-20.20s | %-20.20s | %-20.20s | %-20.20s\n", lastName, firstName, email, phone, address, folderLoc )
+	end
+	def printHead
+		printf("%-20s, %-20.20s | %-20.20s | %-20.20s | %-20.20s | %-20.20s\n", "Last Name", "First Name", "Email", "Phone", "Address", "Folder Location")
+	end
 end
+
 
 #Generates list of clients into an array of Clients
 def genClientList
 	clientList = Array.new #make list of clients 
-	Dir.glob("../../Clients/*").each do |plo|
+	Dir.glob("../../../Clients/*").each do |plo| #This assumes all clients are stored on 3 levels up, in folders listed as "LastName, FirstName"
 		temp = Client.new
 		temp.folderLoc = plo + "/" #file loc is in the GLOB
 		ubufn = plo[plo.rindex('/')+1,200] #create unbuffered name, with cut dir data
@@ -26,15 +34,53 @@ def genClientList
 	end
 return clientList
 end
-#GLOBAL VARIABLES
 
 
+#loadClientData
+def loadClientData
+	clientList = Array.new
+	counter = 0
+	file = File.new("l.csv","r")  
+		while(line = file.gets)
+			if line != nil
+				puts "Loading new client..."
+				temp = Client.new
+				#text file parsing
+				line.split(",").each do |data|
+					puts "\tdata = #{data}"
+							case counter
+							when 0
+									temp.lastName = data[1,100]
+							when 1
+								temp.firstName = data[0,data.index("\"")]
+							when 2
+								temp.phone = data
+							when 3
+								temp.email = data
+							when 4
+								temp.altName = data
+							when 5
+							temp.altPhone = data
+							when 6..9
+								temp.address = "#{temp.address} #{data}"				
+							else
+								break
+							end
+				counter= counter + 1 
+				end
+			counter = 0
+			clientList.push(temp)
+			end
+		end
+	file.close
+	temp.printHead
+	return clientList
+end
 
-################
 
 #Uses list of clients, compares them to names of files in pwd, moves files to appropriate file locations
-def moveAllClients
-	clientList = genClientList
+##Needs to be depreciated asap in favor of moveAFile
+def moveAllClients (clientList)
 	Dir.glob("*.pdf").each do |fil|
 	
 		if fil.index(' ') then
@@ -54,7 +100,7 @@ def moveAllClients
 	end
 end
 
-def moveAFile (fileToMove) #@fileToMove taken in format "Spillers 0.0.0 Depo.pdf"
+def moveAFile (clientList, fileToMove) #@fileToMove taken in format "Spillers 0.0.0 Depo.pdf"
 	clientList = genClientList
 	daSpace = fileToMove.index(' ')
 	if daSpace != nil then
@@ -71,7 +117,7 @@ def moveAFile (fileToMove) #@fileToMove taken in format "Spillers 0.0.0 Depo.pdf
 	end
 end
 
-def renameAFile (fileToRename) #@fileToRename taken in format "*.pdf"
+def renameAFile (clientList, fileToRename) #@fileToRename taken in format "*.pdf"
 	clientList = genClientList
 	person = Client.new
 	monthlist = Date::MONTHNAMES[1,100]
@@ -145,7 +191,10 @@ else
 end
 end
 end
-	i=0
+
+
+#Scans root, moves and scans all
+def moveAndScanAll do
 	Dir.glob("*.pdf").each do |fil|
 		puts "=============================".white
 		puts "Scanning: '#{fil}'"
@@ -155,4 +204,22 @@ end
 		#end
 		i+=1
 		puts "=============================".white
-	end
+end
+
+puts "[1] List all Clients"
+puts "[2] List all Files in Directory"
+puts "[3] Scan & Rename all Clients"
+puts "[4] Move all Recognized Clients"
+puts "[5] 3 & 4" 
+puts "What would you like to do?"
+case gets.chomp
+when 1
+	
+when 2
+when 3
+when 4
+when 5
+else
+end
+
+
