@@ -7,40 +7,22 @@ require 'pdf-reader'
 class Client
 	attr_accessor :firstName, :lastName, :email, :phone, :altPhone, :altName, :address,:folderLoc
 	def print
-		printf("%-20.20s, %-20.20s | %-20.20s | %-20.20s | %-20.20s\n", lastName, firstName, email, phone, address, folderLoc )
+		printf("%-20.20s, %-20.20s | %-20.20s | %-20.20s | %-20.20s | %-20.20s\n", lastName, firstName, email, phone, address, folderLoc )
 	end
 	def printHead
-		printf("%-20s, %-20.20s | %-20.20s | %-20.20s | %-20.20s | %-20.20s\n", "Last Name", "First Name", "Email", "Phone", "Address", "Folder Location")
+		printf("%-20.20s, %-20.20s | %-20.20s | %-20.20s | %-20.20s | %-20.20s\n", "Last Name", "First Name", "Email", "Phone", "Address", "Folder Location")
 	end
 end
 
 
-#Generates list of clients into an array of Clients
-def genClientList
-	clientList = Array.new #make list of clients 
-	Dir.glob("../../../Clients/*").each do |plo| #This assumes all clients are stored on 3 levels up, in folders listed as "LastName, FirstName"
-		temp = Client.new
-		temp.folderLoc = plo + "/" #file loc is in the GLOB
-		ubufn = plo[plo.rindex('/')+1,200] #create unbuffered name, with cut dir data
-		if plo.index(',') == nil then #if there's a comma meaning First/Last Name	
-			#No Comma
-			temp.lastName = ubufn #last name is USUALLY the only thing specified if there's no comma
-		else
-			#Yes Comma
-			temp.lastName = ubufn[0,ubufn.index(',')] #last name is till comma
-			temp.firstName = ubufn[ubufn.index(',')+1, 100] #first name is after comma 
-		end
-		clientList << temp
-	end
-return clientList
-end
+
 
 
 #loadClientData
 def loadClientData
 	clientList = Array.new
 	counter = 0
-	file = File.new("l.csv","r")  
+	file = File.new("l.csv","r")
 		while(line = file.gets)
 			if line != nil
 				puts "Loading new client..."
@@ -62,11 +44,11 @@ def loadClientData
 							when 5
 							temp.altPhone = data
 							when 6..9
-								temp.address = "#{temp.address} #{data}"				
+								temp.address = "#{temp.address} #{data}"
 							else
 								break
 							end
-				counter= counter + 1 
+				counter= counter + 1
 				end
 			counter = 0
 			clientList.push(temp)
@@ -77,12 +59,36 @@ def loadClientData
 	return clientList
 end
 
+#Generates list of clients into an array of Clients, importing data from loadClientData
+def genClientList
+	clientList = loadClientData #make list of clients
+	Dir.glob("../../../Clients/*").each do |plo| #This assumes all clients are stored on 3 levels up, in folders listed as "LastName, FirstName"
+		temp = Client.new
+		temp.folderLoc = plo + "/" #file loc is in the GLOB
+		ubufn = plo[plo.rindex('/')+1,200] #create unbuffered name, with cut dir data
+		if plo.index(',') == nil then #if there's a comma meaning First/Last Name
+			#No Comma
+			temp.lastName = ubufn #last name is USUALLY the only thing specified if there's no comma
+		else
+			#Yes Comma
+			temp.lastName = ubufn[0,ubufn.index(',')] #last name is till comma
+			temp.firstName = ubufn[ubufn.index(',')+1, 100] #first name is after comma
+		end
+		inList = clientList.find_index {|s| s.lastName == temp.lastName}
+		if inList!=nil #update client info, unless the client isn't already in the list, in which case, add it. :D
+			clientList[inList].folderLoc = temp.folderLoc
+		else
+			clientList.push(temp)
+		end
+	end
+return clientList
+end
 
 #Uses list of clients, compares them to names of files in pwd, moves files to appropriate file locations
 ##Needs to be depreciated asap in favor of moveAFile
 def moveAllClients (clientList)
 	Dir.glob("*.pdf").each do |fil|
-	
+
 		if fil.index(' ') then
 			#if there IS a space
 			fCli = fil[0, fil.index(' ')]	#gets last name of client
@@ -140,7 +146,7 @@ def renameAFile (clientList, fileToRename) #@fileToRename taken in format "*.pdf
 						break
 					end
 				end
-			end	
+			end
 			#scan for Date
 			if mfound == false
 				monthlist.each do |mon|
@@ -173,7 +179,7 @@ def renameAFile (clientList, fileToRename) #@fileToRename taken in format "*.pdf
 						type=type.gsub('\n','').gsub('\t','').gsub(/[^0-9A-Za-z ]/,"").gsub(/ +/, " ")
 						type=type.split(/(\W)/).map(&:capitalize).join #put to sentence case
 						type=type[0..50].chomp
-						puts "-----> Found Type #{type}".yellow	
+						puts "-----> Found Type #{type}".yellow
 						tfound = true
 						break
 					end
@@ -185,7 +191,7 @@ if cfound then
 	newFileName = "#{person.lastName} #{date} #{type}.pdf"
 	File.rename(fileToRename, newFileName)
 	puts "File Renamed!".green
-	return newFileName	
+	return newFileName
 else
 	puts "File not Recognized!".red
 end
@@ -194,32 +200,45 @@ end
 
 
 #Scans root, moves and scans all
-def moveAndScanAll do
+def moveAndScanAll
+	i=0
 	Dir.glob("*.pdf").each do |fil|
-		puts "=============================".white
+		puts "=============#{i}================".white
 		puts "Scanning: '#{fil}'"
-		#toMove = renameAFile(fil)
-		#if toMove!=nil
+		toMove = renameAFile(fil)
+		if toMove!=nil
 			moveAFile(fil) #renames file to appropriate syntax, then moves that file to appropriate location
-		#end
-		i+=1
+		end
+		i= i + 1
 		puts "=============================".white
+	end
 end
 
-puts "[1] List all Clients"
-puts "[2] List all Files in Directory"
-puts "[3] Scan & Rename all Clients"
-puts "[4] Move all Recognized Clients"
-puts "[5] 3 & 4" 
-puts "What would you like to do?"
-case gets.chomp
-when 1
-	
-when 2
-when 3
-when 4
-when 5
-else
+ex = 1
+clientList = genClientList
+while ex != 0
+	puts "[1] List all Clients"
+	puts "[2] List all Files in Directory"
+	puts "[3] Scan & Rename all Clients"
+	puts "[4] Move all Recognized Clients"
+	puts "[5] 3 & 4"
+	puts "[6] Exit"
+	puts "What would you like to do?"
+	case gets.chomp.to_i
+		when 1
+			clientList[0].printHead
+			clientList.each { |cli| cli.print
+				gets }
+		when 2
+			Dir.glob(".pdf").each{|ppp| puts ppp }
+		when 3
+			puts "not implemented yet!"
+		when 4
+			puts "not implemented yet!"
+		when 5
+			moveandScanAll
+		when 6
+			ex=0
+			puts "bye bye!"
+	end
 end
-
-
